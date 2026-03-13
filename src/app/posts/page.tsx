@@ -14,10 +14,24 @@ export default function Posts() {
   const [currentPage, setCurrentPage] = useState(1);
   const postsPerPage = 10;
 
+  // FETCH POSTS
   useEffect(() => {
-    fetch("https://jsonplaceholder.typicode.com/posts")
-      .then((res) => res.json())
-      .then((data) => setPosts(data));
+    const fetchPosts = async () => {
+      try {
+        const res = await fetch("https://jsonplaceholder.typicode.com/posts");
+
+        if (!res.ok) {
+          throw new Error("Failed to fetch posts");
+        }
+
+        const data = await res.json();
+        setPosts(data);
+      } catch (err: any) {
+        setError(err.message || "Something went wrong while fetching posts.");
+      }
+    };
+
+    fetchPosts();
   }, []);
 
   // SEARCH FILTER
@@ -34,35 +48,72 @@ export default function Posts() {
   const totalPages = Math.ceil(filteredPosts.length / postsPerPage);
 
   // ADD POST
-  const addPost = () => {
-    if (!title.trim() || !body.trim()) return;
+  const addPost = async () => {
+    try {
+      if (!title.trim() || !body.trim()) {
+        setError("Post cannot be empty.");
+        return;
+      }
 
-    const normalizedTitle = title.trim().toLowerCase();
+      const normalizedTitle = title.trim().toLowerCase();
 
-    const duplicate = posts.find(
-      (post) => post.title.trim().toLowerCase() === normalizedTitle,
-    );
+      const duplicate = posts.find(
+        (post) => post.title.trim().toLowerCase() === normalizedTitle,
+      );
 
-    if (duplicate) {
-      setError("Title already exists. Please choose another title.");
-      return;
+      if (duplicate) {
+        setError("Title already exists. Please choose another title.");
+        return;
+      }
+
+      const newPost = {
+        title: title.trim(),
+        body: body.trim(),
+        userId: 1,
+      };
+
+      const res = await fetch("https://jsonplaceholder.typicode.com/posts", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(newPost),
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to create post.");
+      }
+
+      const data = await res.json();
+
+      setPosts([{ ...data, id: Date.now() }, ...posts]);
+
+      setTitle("");
+      setBody("");
+      setError("");
+    } catch (err: any) {
+      setError(err.message || "Something went wrong while adding the post.");
     }
-
-    const newPost = {
-      id: Date.now(),
-      title: title.trim(),
-      body: body.trim(),
-    };
-
-    setPosts([newPost, ...posts]);
-    setTitle("");
-    setBody("");
-    setError("");
   };
 
-  // DELETE
-  const deletePost = (id: number) => {
-    setPosts(posts.filter((post) => post.id !== id));
+  // DELETE POST
+  const deletePost = async (id: number) => {
+    try {
+      const res = await fetch(
+        `https://jsonplaceholder.typicode.com/posts/${id}`,
+        {
+          method: "DELETE",
+        },
+      );
+
+      if (!res.ok) {
+        throw new Error("Failed to delete post.");
+      }
+
+      setPosts(posts.filter((post) => post.id !== id));
+    } catch (err: any) {
+      setError(err.message || "Something went wrong while deleting the post.");
+    }
   };
 
   // EDIT
@@ -70,36 +121,68 @@ export default function Posts() {
     setEditingId(post.id);
     setTitle(post.title);
     setBody(post.body);
+    setError("");
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  // UPDATE
-  const updatePost = () => {
-    const normalizedTitle = title.trim().toLowerCase();
+  // UPDATE POST
+  const updatePost = async () => {
+    try {
+      if (!title.trim() || !body.trim()) {
+        setError("Post cannot be empty.");
+        return;
+      }
 
-    const duplicate = posts.find(
-      (post) =>
-        post.title.trim().toLowerCase() === normalizedTitle &&
-        post.id !== editingId,
-    );
+      const normalizedTitle = title.trim().toLowerCase();
 
-    if (duplicate) {
-      setError("Title already exists. Please choose another title.");
-      return;
+      const duplicate = posts.find(
+        (post) =>
+          post.title.trim().toLowerCase() === normalizedTitle &&
+          post.id !== editingId,
+      );
+
+      if (duplicate) {
+        setError("Title already exists. Please choose another title.");
+        return;
+      }
+
+      const updatedPost = {
+        id: editingId,
+        title: title.trim(),
+        body: body.trim(),
+        userId: 1,
+      };
+
+      const res = await fetch(
+        `https://jsonplaceholder.typicode.com/posts/${editingId}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(updatedPost),
+        },
+      );
+
+      if (!res.ok) {
+        throw new Error("Failed to update post.");
+      }
+
+      const data = await res.json();
+
+      setPosts(
+        posts.map((post) =>
+          post.id === editingId ? { ...post, ...data } : post,
+        ),
+      );
+
+      setEditingId(null);
+      setTitle("");
+      setBody("");
+      setError("");
+    } catch (err: any) {
+      setError(err.message || "Something went wrong while updating the post.");
     }
-
-    setPosts(
-      posts.map((post) =>
-        post.id === editingId
-          ? { ...post, title: title.trim(), body: body.trim() }
-          : post,
-      ),
-    );
-
-    setEditingId(null);
-    setTitle("");
-    setBody("");
-    setError("");
   };
 
   return (
@@ -112,8 +195,6 @@ export default function Posts() {
             Posts Manager
           </h1>
 
-          {/* ADD POST FORM */}
-
           <div className="bg-white p-6 rounded-2xl shadow-lg mb-10">
             <h2 className="text-xl font-semibold text-gray-900 mb-4">
               {editingId ? "Edit Post" : "Add New Post"}
@@ -125,11 +206,13 @@ export default function Posts() {
 
             <input
               type="text"
-              placeholder="Enter post title..."
               value={title}
               maxLength={80}
-              onChange={(e) => setTitle(e.target.value)}
-              className="w-full p-3 rounded-lg mb-2 text-gray-900 border border-gray-300"
+              onChange={(e) => {
+                setTitle(e.target.value);
+                setError("");
+              }}
+              className="w-full p-3 rounded-lg mb-2 border border-gray-300 text-gray-900"
             />
 
             <p className="text-gray-700 text-sm mb-3">
@@ -141,11 +224,13 @@ export default function Posts() {
             </label>
 
             <textarea
-              placeholder="Write post description..."
               value={body}
               maxLength={300}
-              onChange={(e) => setBody(e.target.value)}
-              className="w-full p-3 rounded-lg mb-2 text-gray-900 border border-gray-300 h-28"
+              onChange={(e) => {
+                setBody(e.target.value);
+                setError("");
+              }}
+              className="w-full p-3 rounded-lg mb-2 border border-gray-300 h-28 resize-none text-gray-900"
             />
 
             <p className="text-gray-700 text-sm mb-3">
@@ -175,8 +260,6 @@ export default function Posts() {
             )}
           </div>
 
-          {/* SEARCH BAR */}
-
           <div className="mb-6">
             <input
               type="text"
@@ -186,11 +269,9 @@ export default function Posts() {
                 setSearch(e.target.value);
                 setCurrentPage(1);
               }}
-              className="w-full p-3 rounded-lg text-gray-900 placeholder-gray-600 border border-gray-300"
+              className="w-full p-3 rounded-lg border border-gray-300"
             />
           </div>
-
-          {/* POSTS */}
 
           <div className="space-y-6">
             {currentPosts.length === 0 ? (
@@ -198,26 +279,19 @@ export default function Posts() {
                 <h2 className="text-xl font-semibold text-gray-800">
                   No Posts Found
                 </h2>
-                <p className="text-gray-600 mt-2">
-                  Try searching with a different title or description.
-                </p>
               </div>
             ) : (
               currentPosts.map((post) => (
                 <div
                   key={post.id}
-                  className="bg-white rounded-2xl p-6 shadow-lg border border-gray-200"
+                  className="bg-white rounded-2xl p-6 shadow-lg border"
                 >
-                  <p className="mb-2 text-gray-900">
-                    <span className="font-semibold text-gray-700">Title:</span>{" "}
-                    {post.title}
+                  <p className="mb-2 break-all text-gray-900 font-semibold">
+                    <b>Title:</b> {post.title}
                   </p>
 
-                  <p className="text-gray-800">
-                    <span className="font-semibold text-gray-700">
-                      Description:
-                    </span>{" "}
-                    {post.body}
+                  <p className="break-all text-gray-800">
+                    <b className="text-gray-900">Description:</b> {post.body}
                   </p>
 
                   <div className="flex gap-3 mt-4">
@@ -239,8 +313,6 @@ export default function Posts() {
               ))
             )}
           </div>
-
-          {/* PAGINATION */}
 
           <div className="flex justify-center flex-wrap gap-3 mt-10">
             {Array.from({ length: totalPages }, (_, i) => (
