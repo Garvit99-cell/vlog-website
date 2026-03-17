@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSelector } from "react-redux";
 import Navbar from "./components/Navbar";
@@ -10,12 +9,6 @@ export default function Home() {
 
   // get user from redux store
   const user = useSelector((state: any) => state.auth.user);
-
-  useEffect(() => {
-    if (!user) {
-      router.push("/login");
-    }
-  }, [user, router]);
 
   return (
     <div>

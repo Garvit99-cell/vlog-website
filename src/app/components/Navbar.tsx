@@ -18,7 +18,7 @@ export default function Navbar() {
 
   const handleLogout = () => {
     dispatch(logout());
-    localStorage.removeItem("loggedInUser");
+    document.cookie = "loggedInUser=; path=/; max-age=0";
     router.push("/login");
   };
 

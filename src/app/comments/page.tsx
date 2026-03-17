@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Navbar from "../components/Navbar";
 
 export default function Comments() {
-  const [comments, setComments] = useState([]);
+  const [comments, setComments] = useState<any[]>([]);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
 
@@ -86,9 +86,8 @@ export default function Comments() {
             <button
               key={num}
               onClick={() => setPage(num)}
-              className={`px-4 py-2 rounded-lg ${
-                page === num ? "bg-purple-600 text-white" : "bg-white border"
-              }`}
+              className={`px-4 py-2 rounded-lg ${page === num ? "bg-purple-600 text-white" : "bg-white border"
+                }`}
             >
               {num}
             </button>

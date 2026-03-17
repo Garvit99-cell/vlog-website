@@ -1,13 +1,14 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { users } from "@/data/users";
 import { useDispatch } from "react-redux";
 import { login } from "@/redux/slices/authSlice";
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const dispatch = useDispatch();
 
   const [email, setEmail] = useState("");
@@ -26,7 +27,8 @@ export default function LoginPage() {
 
       document.cookie = `loggedInUser=${encodeURIComponent(JSON.stringify(user))}; path=/; max-age=86400`;
 
-      router.replace("/");
+      const callbackUrl = searchParams.get("callbackUrl") || "/";
+      router.replace(callbackUrl);
     } else {
       setError("Invalid email or password");
     }
@@ -85,5 +87,13 @@ export default function LoginPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+      <LoginForm />
+    </Suspense>
   );
 }

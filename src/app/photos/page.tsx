@@ -20,7 +20,7 @@ export default async function Photos() {
         </h1>
 
         <div className="grid md:grid-cols-5 gap-4">
-          {photos.map((photo) => (
+          {photos.map((photo: any) => (
             <img
               key={photo.id}
               src={photo.thumbnailUrl}
